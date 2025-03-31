@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     icon: "https://cdn.discordapp.com/attachments/1222395559843991623/1355733439831081020/Untitled38_20250329224024.png?ex=67ea00a8&is=67e8af28&hm=0e2ee03e52bda82c8e90a2fe81d5acde4c700d584d545ae5c9e07c8950e2227a&",
     apple: "https://cdn.discordapp.com/attachments/1222395559843991623/1355733439831081020/Untitled38_20250329224024.png?ex=67ea00a8&is=67e8af28&hm=0e2ee03e52bda82c8e90a2fe81d5acde4c700d584d545ae5c9e07c8950e2227a&",
   },
-    generator: 'v0.dev'
+    generator: 'next.js'
 }
 
 export default function RootLayout({
