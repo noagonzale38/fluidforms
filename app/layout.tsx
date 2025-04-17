@@ -5,6 +5,7 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
 import { AuthProvider } from "@/lib/auth-provider"
+import { GoogleOAuthProvider } from '@react-oauth/google'
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -12,10 +13,10 @@ export const metadata: Metadata = {
   title: "FluidForms - Modern Form Management",
   description: "Create, manage, and analyze forms with ease",
   icons: {
-    icon: "https://cdn.discordapp.com/attachments/1222395559843991623/1355733439831081020/Untitled38_20250329224024.png?ex=67ea00a8&is=67e8af28&hm=0e2ee03e52bda82c8e90a2fe81d5acde4c700d584d545ae5c9e07c8950e2227a&",
+    icon: "https://staging.fluidforms.org/fluidforms.png",
     apple: "https://cdn.discordapp.com/attachments/1222395559843991623/1355733439831081020/Untitled38_20250329224024.png?ex=67ea00a8&is=67e8af28&hm=0e2ee03e52bda82c8e90a2fe81d5acde4c700d584d545ae5c9e07c8950e2227a&",
   },
-    generator: 'next.js'
+  generator: 'next.js'
 }
 
 export default function RootLayout({
@@ -26,17 +27,15 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.className} antialiased`}>
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
-          <AuthProvider>
-            {children}
-            <Toaster />
-          </AuthProvider>
-        </ThemeProvider>
+        <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ''}>
+          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
+            <AuthProvider>
+              {children}
+              <Toaster />
+            </AuthProvider>
+          </ThemeProvider>
+        </GoogleOAuthProvider>
       </body>
     </html>
   )
 }
-
-
-
-import './globals.css'

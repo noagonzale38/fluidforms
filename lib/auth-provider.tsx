@@ -49,6 +49,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         console.log("Checking for stored user data...")
         const storedUser = localStorage.getItem("formflow_user")
+        
+        // Check for impersonation
+        const impersonateSession = localStorage.getItem("impersonate_session")
+        const impersonateUserId = localStorage.getItem("impersonate_user_id")
+        const currentSession = localStorage.getItem("session_id")
+
+        if (impersonateSession && impersonateUserId && currentSession === impersonateSession) {
+          console.log("Using impersonated user:", impersonateUserId)
+          // Create a basic impersonated user object
+          const impersonatedUser = {
+            id: impersonateUserId,
+            username: `Impersonated_${impersonateUserId.substring(0, 6)}`,
+            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${impersonateUserId}`,
+            accessToken: "impersonated_token",
+          }
+          setUser(impersonatedUser)
+          setIsLoading(false)
+          return
+        }
+
         if (storedUser) {
           const parsedUser = JSON.parse(storedUser)
           console.log("Found stored user:", {
@@ -79,13 +99,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = () => {
     try {
       const authUrl = `https://staging.fluidforms.org/auth/login`
-      console.log("Redirecting to Discord auth:", authUrl)
+      console.log("Redirecting to login page:", authUrl)
       window.location.href = authUrl
     } catch (error) {
       console.error("Error during login redirect:", error)
       toast({
         title: "Login Error",
-        description: "Failed to redirect to Discord login",
+        description: "Failed to redirect to login page",
         variant: "destructive",
       })
     }
@@ -96,6 +116,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log("Logging out user...")
       localStorage.removeItem("formflow_user")
       localStorage.removeItem("discord_token")
+      localStorage.removeItem("google_token")
+      localStorage.removeItem("impersonate_session")
+      localStorage.removeItem("impersonate_user_id")
       setUser(null)
       console.log("User logged out successfully")
       toast({
@@ -114,4 +137,3 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return <AuthContext.Provider value={{ user, login, logout, isLoading }}>{children}</AuthContext.Provider>
 }
-

@@ -93,8 +93,8 @@ export default function SharedForm({ params }: { params: Promise<{ shareId: stri
 
     if (result.success) {
       toast({
-        title: "Form Submitted",
-        description: "Your response has been recorded. Thank you!",
+        title: "Submitting Response",
+        description: "We are working on submitting your response. Please wait, this make take a while.",
       })
 
       // Clear form data

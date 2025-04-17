@@ -25,7 +25,7 @@ export default function ThankYouPage({ params }: { params: Promise<{ shareId: st
           <CardContent className="text-center">
             <div className="space-y-6">
               <p className="text-muted-foreground">
-                We appreciate your time and feedback. Your response has been recorded.
+                Your response has been recorded.
               </p>
               <div className="flex flex-col space-y-3">
                 <Link href={`/forms/s/${shareId}`}>

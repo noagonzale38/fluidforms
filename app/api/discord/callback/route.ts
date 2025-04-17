@@ -17,4 +17,3 @@ export async function GET(req: NextRequest) {
   console.log("API route redirecting to:", url.toString())
   return NextResponse.redirect(url)
 }
-

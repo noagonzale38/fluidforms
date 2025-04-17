@@ -2,101 +2,263 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { useToast } from "@/hooks/use-toast"
+import { CheckCircle } from "lucide-react"
 
 export default function AuthCallback() {
   const router = useRouter()
+  const { toast } = useToast()
   const [error, setError] = useState<string | null>(null)
+  const [status, setStatus] = useState<string>("Initializing authentication...")
+  const [isProcessing, setIsProcessing] = useState(true)
+  const [isSuccess, setIsSuccess] = useState(false)
 
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search)
-    const errorParam = urlParams.get("error")
-    const errorDescription = urlParams.get("error_description")
-    const code = urlParams.get("code") // The authorization code from Discord
-
-    // Log error received in URL parameters
-    if (errorParam) {
-      console.log("Authentication error received:", errorParam, errorDescription) // Log error details
-      setError(`Authentication error: ${errorDescription || errorParam}`)
-      setTimeout(() => router.push("/"), 3000) // Redirect back to home after showing error
-      return
-    }
-
-    // If no `code`, something went wrong
-    if (!code) {
-      console.log("No authentication code received in the URL.") // Log if no code found
-      setError("No authentication code received. Please try again.")
-      setTimeout(() => router.push("/"), 3000) // Redirect back to home after showing error
-      return
-    }
-
-    // Exchange the code for an access token
-    const fetchAccessToken = async (code: string) => {
+    const handleAuth = async () => {
       try {
+        setStatus("Reading URL parameters...")
+        const urlParams = new URLSearchParams(window.location.search)
+        const errorParam = urlParams.get("error")
+        const errorDescription = urlParams.get("error_description")
+        const code = urlParams.get("code") // The authorization code from Discord
+
+        console.log("Auth callback initialized", {
+          hasError: !!errorParam,
+          hasCode: !!code,
+          url: window.location.href,
+        })
+
+        // Log error received in URL parameters
+        if (errorParam) {
+          console.error("Authentication error received:", errorParam, errorDescription)
+          setError(`Authentication error: ${errorDescription || errorParam}`)
+          toast({
+            title: "Authentication Failed",
+            description: errorDescription || errorParam,
+            variant: "destructive",
+          })
+          if (window.opener) {
+            window.opener.postMessage({ type: 'DISCORD_AUTH_ERROR' }, '*')
+            window.close()
+          } else {
+            setTimeout(() => router.push("/dashboard"), 3000)
+          }
+          return
+        }
+
+        // If no `code`, something went wrong
+        if (!code) {
+          console.error("No authentication code received in the URL.")
+          setError("No authentication code received. Please try again.")
+          toast({
+            title: "Authentication Failed",
+            description: "No authentication code received. Please try again.",
+            variant: "destructive",
+          })
+          if (window.opener) {
+            window.opener.postMessage({ type: 'DISCORD_AUTH_ERROR' }, '*')
+            window.close()
+          } else {
+            setTimeout(() => router.push("/dashboard"), 3000)
+          }
+          return
+        }
+
+        // Exchange the code for an access token
+        setStatus("Exchanging code for access token...")
+        console.log("Exchanging code for access token...")
+
+        // Get the redirect URI that was used for the initial auth request
+        const redirectUri =
+            sessionStorage.getItem("discord_redirect_uri") || process.env.NEXT_PUBLIC_DISCORD_REDIRECT_URI
+
+        console.log("Using redirect URI from session:", redirectUri)
+
         const response = await fetch("/api/discord/token", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ code }),
+          body: JSON.stringify({
+            code,
+            redirectUri,
+          }),
         })
 
         if (!response.ok) {
           const errorText = await response.text()
-          console.error("Error exchanging code for access token:", errorText)
-          setError("Failed to authenticate with Discord.")
-          setTimeout(() => router.push("/"), 3000)
+          console.error("Error exchanging code for access token:", errorText, response.status)
+          setError(`Failed to authenticate with Discord. Status: ${response.status}`)
+          toast({
+            title: "Authentication Failed",
+            description: `Failed to authenticate with Discord. Status: ${response.status}`,
+            variant: "destructive",
+          })
+          if (window.opener) {
+            window.opener.postMessage({ type: 'DISCORD_AUTH_ERROR' }, '*')
+            window.close()
+          } else {
+            setTimeout(() => router.push("/dashboard"), 3000)
+          }
           return
         }
 
         const data = await response.json()
+        console.log("Token response received:", {
+          hasAccessToken: !!data.access_token,
+          tokenType: data.token_type,
+          expiresIn: data.expires_in,
+        })
+
         const { access_token } = data
 
-        if (access_token) {
-          console.log("Access token received:", access_token) // Log the token
-          localStorage.setItem("discord_token", access_token)
-          console.log("Token saved to localStorage.") // Log saving the token
-
-          // Fetch user info
-          const userResponse = await fetch("https://discord.com/api/users/@me", {
-            headers: {
-              Authorization: `Bearer ${access_token}`,
-            },
+        if (!access_token) {
+          console.error("No access token in response:", data)
+          setError("Failed to retrieve access token from Discord.")
+          toast({
+            title: "Authentication Failed",
+            description: "Failed to retrieve access token from Discord.",
+            variant: "destructive",
           })
-
-          if (!userResponse.ok) {
-            setError("Failed to get user info.")
-            setTimeout(() => router.push("/"), 3000)
-            return
+          if (window.opener) {
+            window.opener.postMessage({ type: 'DISCORD_AUTH_ERROR' }, '*')
+            window.close()
+          } else {
+            setTimeout(() => router.push("/dashboard"), 3000)
           }
-
-          const userData = await userResponse.json()
-
-          const userObj = {
-            id: userData.id,
-            username: userData.username,
-            avatar: userData.avatar
-                ? `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.png`
-                : `https://cdn.discordapp.com/embed/avatars/${Number.parseInt(userData.discriminator || "0") % 5}.png`,
-            accessToken: access_token,
-          }
-
-          // Store user in localStorage
-          localStorage.setItem("formflow_user", JSON.stringify(userObj))
-
-          router.push("/dashboard") // Redirect to the dashboard page after saving the token
-        } else {
-          setError("Failed to retrieve access token.")
-          setTimeout(() => router.push("/"), 3000) // Redirect back to home after error
+          return
         }
+
+        // Save token to localStorage
+        setStatus("Saving authentication token...")
+        try {
+          localStorage.setItem("discord_token", access_token)
+          console.log("Token saved to localStorage successfully")
+        } catch (e) {
+          console.error("Failed to save token to localStorage:", e)
+          setError("Failed to save authentication data. Please enable cookies and localStorage.")
+          toast({
+            title: "Storage Error",
+            description: "Failed to save authentication data. Please enable cookies and localStorage.",
+            variant: "destructive",
+          })
+          if (window.opener) {
+            window.opener.postMessage({ type: 'DISCORD_AUTH_ERROR' }, '*')
+            window.close()
+          } else {
+            setTimeout(() => router.push("/dashboard"), 3000)
+          }
+          return
+        }
+
+        // Fetch user info
+        setStatus("Fetching user information...")
+        console.log("Fetching user information from Discord API...")
+
+        const userResponse = await fetch("https://discord.com/api/users/@me", {
+          headers: {
+            Authorization: `Bearer ${access_token}`,
+          },
+        })
+
+        if (!userResponse.ok) {
+          const userErrorText = await userResponse.text()
+          console.error("Failed to get user info:", userErrorText, userResponse.status)
+          setError(`Failed to get user info. Status: ${userResponse.status}`)
+          toast({
+            title: "Authentication Failed",
+            description: `Failed to get user info. Status: ${userResponse.status}`,
+            variant: "destructive",
+          })
+          if (window.opener) {
+            window.opener.postMessage({ type: 'DISCORD_AUTH_ERROR' }, '*')
+            window.close()
+          } else {
+            setTimeout(() => router.push("/dashboard"), 3000)
+          }
+          return
+        }
+
+        const userData = await userResponse.json()
+        console.log("User data received:", {
+          id: userData.id,
+          username: userData.username,
+          hasAvatar: !!userData.avatar,
+        })
+
+        const userObj = {
+          id: userData.id,
+          username: userData.username,
+          avatar: userData.avatar
+              ? `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.png`
+              : `https://cdn.discordapp.com/embed/avatars/${Number.parseInt(userData.discriminator || "0") % 5}.png`,
+          accessToken: access_token,
+          email: userData.email,
+        }
+
+        // Store user in localStorage
+        setStatus("Saving user information...")
+        try {
+          localStorage.setItem("formflow_user", JSON.stringify(userObj))
+          console.log("User data saved to localStorage successfully")
+        } catch (e) {
+          console.error("Failed to save user data to localStorage:", e)
+          setError("Failed to save user data. Please enable cookies and localStorage.")
+          toast({
+            title: "Storage Error",
+            description: "Failed to save user data. Please enable cookies and localStorage.",
+            variant: "destructive",
+          })
+          if (window.opener) {
+            window.opener.postMessage({ type: 'DISCORD_AUTH_ERROR' }, '*')
+            window.close()
+          } else {
+            setTimeout(() => router.push("/dashboard"), 3000)
+          }
+          return
+        }
+
+        // Authentication successful
+        setStatus("Authentication successful!")
+        setIsSuccess(true)
+        console.log("Authentication successful")
+
+        // Clean up the session storage
+        sessionStorage.removeItem("discord_redirect_uri")
+
+        // Show success state briefly before closing/redirecting
+        setTimeout(() => {
+          // If this is a popup, message the parent window and close
+          if (window.opener) {
+            window.opener.postMessage({ type: 'DISCORD_AUTH_SUCCESS' }, '*')
+            window.close()
+          } else {
+            // Otherwise redirect to dashboard
+            router.push("/dashboard")
+          }
+        }, 1000) // Show success state for 1 second
+
       } catch (error) {
-        console.error("Error exchanging code for access token:", error)
-        setError("Error exchanging code for access token.")
-        setTimeout(() => router.push("/"), 3000) // Redirect back to home after error
+        console.error("Unexpected error during authentication:", error)
+        setError("An unexpected error occurred during authentication.")
+        toast({
+          title: "Authentication Error",
+          description: "An unexpected error occurred during authentication.",
+          variant: "destructive",
+        })
+        if (window.opener) {
+          window.opener.postMessage({ type: 'DISCORD_AUTH_ERROR' }, '*')
+          window.close()
+        } else {
+          setTimeout(() => router.push("/dashboard"), 3000)
+        }
+      } finally {
+        setIsProcessing(false)
       }
     }
 
-    fetchAccessToken(code)
-  }, [router])
+    handleAuth()
+  }, [router, toast])
 
   return (
       <div className="flex items-center justify-center min-h-screen bg-background">
@@ -109,13 +271,25 @@ export default function AuthCallback() {
               </>
           ) : (
               <>
-                <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto"></div>
-                <p className="mt-4 text-lg">Authenticating...</p>
-                <p className="text-sm text-muted-foreground">You will be redirected shortly</p>
+                {isSuccess ? (
+                    <div className="flex flex-col items-center justify-center">
+                      <CheckCircle className="h-16 w-16 text-green-500 mb-4" />
+                      <p className="text-xl font-semibold text-green-500">Login Successful!</p>
+                    </div>
+                ) : (
+                    <>
+                      <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto"></div>
+                      <p className="mt-4 text-lg">{status}</p>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        {isProcessing
+                            ? "Please wait while we complete the authentication process..."
+                            : "You will be redirected shortly"}
+                      </p>
+                    </>
+                )}
               </>
           )}
         </div>
       </div>
   )
 }
-

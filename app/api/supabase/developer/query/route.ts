@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { createClient } from "@supabase/supabase-js"
-import { isDeveloper } from "@/lib/auth-utils"
 
 // This is a server-side route that will execute SQL queries directly
 export async function POST(req: NextRequest) {
@@ -10,39 +9,16 @@ export async function POST(req: NextRequest) {
         const body = await req.json()
         const { query } = body
 
-        // Get the user's token from the request
-        const token = req.headers.get("authorization")?.split("Bearer ")[1]
-
-        if (!token) {
-            return NextResponse.json({ error: "Unauthorized: No token provided" }, { status: 401 })
-        }
-
-        // Verify the user is a developer
-        try {
-            // Fetch user info from Discord
-            const userResponse = await fetch("https://discord.com/api/users/@me", {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            })
-
-            if (!userResponse.ok) {
-                return NextResponse.json({ error: "Unauthorized: Invalid token" }, { status: 401 })
-            }
-
-            const userData = await userResponse.json()
-
-            if (!isDeveloper(userData.id)) {
-                return NextResponse.json({ error: "Forbidden: Developer access required" }, { status: 403 })
-            }
-        } catch (error) {
-            return NextResponse.json({ error: "Error verifying developer status" }, { status: 500 })
+        // Verify required environment variables
+        if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+            console.error("Missing required Supabase environment variables")
+            return NextResponse.json({ error: "Server configuration error" }, { status: 500 })
         }
 
         // Create a Supabase client with the service role key (admin privileges)
         const supabaseAdmin = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-            process.env.SUPABASE_SERVICE_ROLE_KEY || "",
+            process.env.NEXT_PUBLIC_SUPABASE_URL,
+            process.env.SUPABASE_SERVICE_ROLE_KEY,
             {
                 auth: {
                     autoRefreshToken: false,
@@ -57,7 +33,7 @@ export async function POST(req: NextRequest) {
             },
         )
 
-        // Execute the query
+        // Execute the query using the execute_sql RPC function
         const { data, error } = await supabaseAdmin.rpc("execute_sql", { query_text: query })
 
         if (error) {
@@ -71,4 +47,3 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 })
     }
 }
-

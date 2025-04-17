@@ -23,6 +23,7 @@ import {
     RefreshCw,
     Edit,
     Eye,
+    Key,
 } from "lucide-react"
 
 export default function DeveloperDashboard() {
@@ -39,22 +40,60 @@ export default function DeveloperDashboard() {
     // User management states
     const [userId, setUserId] = useState("")
     const [userData, setUserData] = useState("")
+    const [sessionId, setSessionId] = useState("")
+    const [impersonateUserId, setImpersonateUserId] = useState("")
 
     // Database query state
     const [sqlQuery, setSqlQuery] = useState("SELECT * FROM forms LIMIT 10;")
     const [queryResult, setQueryResult] = useState("")
 
     useEffect(() => {
-        // Redirect if not a developer
-        if (!isLoading && (!user || !isDeveloper(user.id))) {
+        // Generate and store session ID if not exists
+        if (!localStorage.getItem("session_id")) {
+            const newSessionId = generateSessionId()
+            localStorage.setItem("session_id", newSessionId)
+        }
+    }, [])
+
+    const generateSessionId = () => {
+        return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+    }
+
+    const handleImpersonateUser = () => {
+        if (!sessionId || !impersonateUserId) {
             toast({
-                title: "Access Denied",
-                description: "You don't have permission to access this area.",
+                title: "Missing Information",
+                description: "Please provide both Session ID and User ID",
                 variant: "destructive",
             })
-            router.push("/")
+            return
         }
-    }, [user, isLoading, router, toast])
+
+        try {
+            localStorage.setItem("impersonate_session", sessionId)
+            localStorage.setItem("impersonate_user_id", impersonateUserId)
+            toast({
+                title: "Impersonation Set",
+                description: "Refresh the page to apply the changes",
+            })
+        } catch (error) {
+            console.error("Error setting impersonation:", error)
+            toast({
+                title: "Error",
+                description: "Failed to set impersonation data",
+                variant: "destructive",
+            })
+        }
+    }
+
+    const clearImpersonation = () => {
+        localStorage.removeItem("impersonate_session")
+        localStorage.removeItem("impersonate_user_id")
+        toast({
+            title: "Impersonation Cleared",
+            description: "Refresh the page to apply the changes",
+        })
+    }
 
     // Function to execute a direct database query
     const executeQuery = async () => {
@@ -653,7 +692,7 @@ export default function DeveloperDashboard() {
                     {/* Users Tab */}
                     <TabsContent value="users" className="mt-6">
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            <div className="lg:col-span-1">
+                            <div className="lg:col-span-1 space-y-6">
                                 <Card>
                                     <CardHeader>
                                         <CardTitle>User Management</CardTitle>
@@ -661,7 +700,7 @@ export default function DeveloperDashboard() {
                                     </CardHeader>
                                     <CardContent className="space-y-4">
                                         <div className="space-y-2">
-                                            <Label htmlFor="user-id">User ID (Discord ID)</Label>
+                                            <Label htmlFor="user-id">User ID</Label>
                                             <div className="flex gap-2">
                                                 <Input
                                                     id="user-id"
@@ -683,6 +722,48 @@ export default function DeveloperDashboard() {
                                                     )}
                                                 </Button>
                                             </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>User Impersonation</CardTitle>
+                                        <CardDescription>Test as different users</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="session-id">Session ID</Label>
+                                            <Input
+                                                id="session-id"
+                                                value={sessionId}
+                                                onChange={(e) => setSessionId(e.target.value)}
+                                                placeholder="Enter session ID"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="impersonate-id">Impersonate User ID</Label>
+                                            <Input
+                                                id="impersonate-id"
+                                                value={impersonateUserId}
+                                                onChange={(e) => setImpersonateUserId(e.target.value)}
+                                                placeholder="Enter user ID to impersonate"
+                                            />
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <Button
+                                                onClick={handleImpersonateUser}
+                                                className="flex-1"
+                                            >
+                                                <Key className="h-4 w-4 mr-2" />
+                                                Set Impersonation
+                                            </Button>
+                                            <Button
+                                                variant="destructive"
+                                                onClick={clearImpersonation}
+                                            >
+                                                Clear
+                                            </Button>
                                         </div>
                                     </CardContent>
                                 </Card>
@@ -750,6 +831,7 @@ export default function DeveloperDashboard() {
                     </TabsContent>
 
                     {/* System Tab */}
+                
                     <TabsContent value="system" className="mt-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <Card>
@@ -830,4 +912,3 @@ export default function DeveloperDashboard() {
         </div>
     )
 }
-

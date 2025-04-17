@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-provider"
-import  Navbar  from "@/components/navbar"
+import Navbar from "@/components/navbar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -23,6 +23,7 @@ export default function Dashboard() {
     totalForms: 0,
     totalResponses: 0,
     completionRate: 0,
+    startTime: Date.now(),
   })
   const [isLoading, setIsLoading] = useState(true)
   const [forms, setForms] = useState([])
@@ -32,6 +33,13 @@ export default function Dashboard() {
       router.push("/")
     }
   }, [user, authLoading, router])
+
+  useEffect(() => {
+    // Store start time in localStorage if not exists
+    if (!localStorage.getItem('session_start_time')) {
+      localStorage.setItem('session_start_time', Date.now().toString())
+    }
+  }, [])
 
   useEffect(() => {
     async function loadStats() {
@@ -54,18 +62,20 @@ export default function Dashboard() {
           const totalForms = forms.length
           const totalResponses = forms.reduce((sum, form) => sum + form.responseCount, 0)
 
-          // Calculate completion rate if there are responses
-          let completionRate = 0
-          if (totalResponses > 0) {
-            // In a real app, you'd calculate this based on partial vs complete responses
-            // For now, we'll use a placeholder calculation
-            completionRate = Math.round((totalResponses / (totalResponses * 1.2)) * 100)
-          }
+          // Calculate completion rate based on actual completed responses
+          const completedResponses = forms.reduce((sum, form) => {
+            return sum + (form.responses?.filter(r => r.status === 'complete').length || 0)
+          }, 0)
+          
+          const completionRate = totalResponses > 0 
+            ? Math.round((completedResponses / totalResponses) * 100)
+            : 0
 
           setStats({
             totalForms,
             totalResponses,
             completionRate,
+            startTime: parseInt(localStorage.getItem('session_start_time') || Date.now().toString()),
           })
         } else {
           console.error("Error from getUserFormsAdmin:", result.error)
@@ -147,7 +157,7 @@ export default function Dashboard() {
               <Settings className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{stats.completionRate > 0 ? `${stats.completionRate}%` : "-"}</div>
+              <div className="text-3xl font-bold">{stats.completionRate}%</div>
               <p className="text-sm text-muted-foreground">
                 {stats.totalResponses === 0
                   ? "Track form completion statistics"
@@ -177,4 +187,3 @@ export default function Dashboard() {
     </div>
   )
 }
-
