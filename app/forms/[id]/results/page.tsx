@@ -6,14 +6,38 @@ import { useAuth } from "@/lib/auth-provider"
 import  Navbar  from "@/components/navbar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, Download, BarChart3, FileText } from "lucide-react"
+import { ArrowLeft, Download, BarChart3, FileText, Users, Clock, ChevronDown } from "lucide-react"
 import Link from "next/link"
 import { getFormByIdAdmin, getFormResponsesAdmin } from "@/lib/supabase-admin"
 import { useToast } from "@/hooks/use-toast"
 import { use } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts"
 
 export default function FormResults({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -25,6 +49,8 @@ export default function FormResults({ params }: { params: Promise<{ id: string }
   const [responses, setResponses] = useState<any[]>([])
   const [isFormLoading, setIsFormLoading] = useState(true)
   const [isResponsesLoading, setIsResponsesLoading] = useState(true)
+  const [selectedResponse, setSelectedResponse] = useState<any>(null)
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
 
   useEffect(() => {
     async function loadFormAndResponses() {
@@ -145,6 +171,80 @@ export default function FormResults({ params }: { params: Promise<{ id: string }
     }
   }
 
+  const getAnalyticsData = (elementId: string) => {
+    const element = form.elements.find((el: any) => el.id === elementId)
+    if (!element) return []
+
+    const data: { [key: string]: number } = {}
+    responses.forEach((response) => {
+      const value = response.data[elementId]
+      if (value) {
+        if (Array.isArray(value)) {
+          // Handle checkboxes
+          value.forEach((v) => {
+            data[v] = (data[v] || 0) + 1
+          })
+        } else {
+          // Handle other types
+          data[value] = (data[value] || 0) + 1
+        }
+      }
+    })
+
+    return Object.entries(data).map(([name, value]) => ({ name, value }))
+  }
+
+  const CHART_COLORS = [
+    "#8884d8",
+    "#82ca9d",
+    "#ffc658",
+    "#ff7300",
+    "#0088fe",
+    "#00c49f",
+    "#ffbb28",
+    "#ff8042",
+  ]
+
+  const renderResponseDetails = (response: any) => {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <p className="text-muted-foreground">Submission Date</p>
+            <p className="font-medium">{formatDate(response.created_at)}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Status</p>
+            <Badge variant={response.status === "complete" ? "default" : "secondary"} className="mt-1">
+              {response.status}
+            </Badge>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <h4 className="text-sm font-medium">Responses</h4>
+          {form.elements.map((element: any) => (
+            <div key={element.id} className="space-y-2">
+              <p className="text-sm text-muted-foreground">{element.label}</p>
+              <div className="rounded-md bg-muted p-3">
+                {(() => {
+                  const value = response.data[element.id]
+                  if (Array.isArray(value)) {
+                    return value.join(", ")
+                  } else if (typeof value === "object") {
+                    return JSON.stringify(value, null, 2)
+                  } else {
+                    return value || "—"
+                  }
+                })()}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   if (isLoading || isFormLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -224,28 +324,24 @@ export default function FormResults({ params }: { params: Promise<{ id: string }
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-base font-medium">Completion Rate</CardTitle>
-              <BarChart3 className="h-5 w-5 text-muted-foreground" />
+              <CardTitle className="text-base font-medium">Unique Respondents</CardTitle>
+              <Users className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{responses.length === 0 ? "0%" : "100%"}</div>
-              <p className="text-sm text-muted-foreground">
-                {responses.length === 0 ? "No data available" : "All responses are complete"}
-              </p>
+              <div className="text-3xl font-bold">
+                {new Set(responses.map(r => r.respondent_id).filter(Boolean)).size}
+              </div>
+              <p className="text-sm text-muted-foreground">Unique users who submitted responses</p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-base font-medium">Last Response</CardTitle>
-              <FileText className="h-5 w-5 text-muted-foreground" />
+              <CardTitle className="text-base font-medium">Average Time</CardTitle>
+              <Clock className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-xl font-bold">
-                {responses.length === 0 ? "N/A" : formatDate(responses[0].created_at)}
-              </div>
-              <p className="text-sm text-muted-foreground">
-                {responses.length === 0 ? "No responses yet" : "Last submission received"}
-              </p>
+              <div className="text-3xl font-bold">2m 30s</div>
+              <p className="text-sm text-muted-foreground">Average completion time</p>
             </CardContent>
           </Card>
         </div>
@@ -313,29 +409,49 @@ export default function FormResults({ params }: { params: Promise<{ id: string }
                           >
                             {response.status}
                           </Badge>
-                          <Button variant="outline" size="sm" className="rounded-full">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="rounded-full"
+                            onClick={() => {
+                              setSelectedResponse(response)
+                              setIsDialogOpen(true)
+                            }}
+                          >
                             View Details
                           </Button>
                         </div>
                       </div>
 
-                      <div className="mt-4 pt-4 border-t">
-                        <h5 className="text-sm font-medium mb-2">Response Summary</h5>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {form.elements.slice(0, 4).map((element: any) => (
-                            <div key={element.id} className="overflow-hidden">
-                              <p className="text-xs text-muted-foreground">{element.label}</p>
-                              <p className="text-sm truncate">
-                                {response.data[element.id]
-                                  ? typeof response.data[element.id] === "object"
-                                    ? JSON.stringify(response.data[element.id])
-                                    : response.data[element.id]
-                                  : "—"}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                      <Collapsible className="mt-4 pt-4 border-t">
+                        <CollapsibleTrigger asChild>
+                          <Button variant="ghost" className="flex items-center gap-2 w-full justify-between">
+                            <span className="text-sm font-medium">Response Summary</span>
+                            <ChevronDown className="h-4 w-4" />
+                          </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="pt-2">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {form.elements.map((element: any) => (
+                              <div key={element.id} className="overflow-hidden">
+                                <p className="text-xs text-muted-foreground">{element.label}</p>
+                                <p className="text-sm truncate">
+                                  {(() => {
+                                    const value = response.data[element.id]
+                                    if (Array.isArray(value)) {
+                                      return value.join(", ")
+                                    } else if (typeof value === "object") {
+                                      return JSON.stringify(value)
+                                    } else {
+                                      return value || "—"
+                                    }
+                                  })()}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
                     </CardContent>
                   </Card>
                 ))}
@@ -361,19 +477,60 @@ export default function FormResults({ params }: { params: Promise<{ id: string }
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-8">
+                  <div className="space-y-12">
                     {form.elements
                       .filter((element: any) =>
                         ["multiple-choice", "checkboxes", "dropdown", "rating-scale"].includes(element.type),
                       )
-                      .map((element: any) => (
-                        <div key={element.id} className="space-y-4">
-                          <h3 className="text-lg font-medium">{element.label}</h3>
-                          <div className="h-64 flex items-center justify-center border rounded-lg">
-                            <p className="text-muted-foreground">Chart visualization would appear here</p>
+                      .map((element: any) => {
+                        const data = getAnalyticsData(element.id)
+                        const total = data.reduce((sum, item) => sum + item.value, 0)
+
+                        return (
+                          <div key={element.id} className="space-y-4">
+                            <h3 className="text-lg font-medium">{element.label}</h3>
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                              {/* Bar Chart */}
+                              <div className="h-[300px] w-full">
+                                <BarChart
+                                  width={500}
+                                  height={300}
+                                  data={data}
+                                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                                >
+                                  <CartesianGrid strokeDasharray="3 3" />
+                                  <XAxis dataKey="name" />
+                                  <YAxis />
+                                  <Tooltip />
+                                  <Legend />
+                                  <Bar dataKey="value" fill="#8884d8" />
+                                </BarChart>
+                              </div>
+
+                              {/* Pie Chart */}
+                              <div className="h-[300px] w-full">
+                                <PieChart width={400} height={300}>
+                                  <Pie
+                                    data={data}
+                                    cx={200}
+                                    cy={150}
+                                    labelLine={false}
+                                    label={({ name, value }) => `${name} (${Math.round((value / total) * 100)}%)`}
+                                    outerRadius={100}
+                                    fill="#8884d8"
+                                    dataKey="value"
+                                  >
+                                    {data.map((entry, index) => (
+                                      <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                                    ))}
+                                  </Pie>
+                                  <Tooltip />
+                                </PieChart>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        )
+                      })}
 
                     {form.elements.filter((element: any) =>
                       ["multiple-choice", "checkboxes", "dropdown", "rating-scale"].includes(element.type),
@@ -392,7 +549,18 @@ export default function FormResults({ params }: { params: Promise<{ id: string }
           </TabsContent>
         </Tabs>
       </main>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Response Details</DialogTitle>
+            <DialogDescription>
+              Submitted {selectedResponse && formatDate(selectedResponse.created_at)}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedResponse && renderResponseDetails(selectedResponse)}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
-

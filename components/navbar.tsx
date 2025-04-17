@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { LogOut, Plus, Terminal } from "lucide-react"
+import { LogOut, Plus, Terminal, Settings, User } from "lucide-react"
 import { useEffect, useState } from "react"
 import { isDeveloper } from "@/lib/auth-utils"
 
@@ -66,21 +66,34 @@ export default function Navbar() {
                       <DropdownMenuLabel className="font-normal">
                         <div className="flex flex-col space-y-1">
                           <p className="text-sm font-medium leading-none">{user.username}</p>
-                          <p className="text-xs leading-none text-muted-foreground">Discord ID: {user.id}</p>
+                          <p className="text-xs leading-none text-muted-foreground">User ID: {user.id}</p>
                         </div>
                       </DropdownMenuLabel>
                       <DropdownMenuSeparator />
+                      <DropdownMenuItem asChild>
+                        <Link href="/profile" className="flex items-center gap-2 cursor-pointer">
+                          <User className="h-4 w-4" />
+                          <span>Profile</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/settings" className="flex items-center gap-2 cursor-pointer">
+                          <Settings className="h-4 w-4" />
+                          <span>Settings</span>
+                        </Link>
+                      </DropdownMenuItem>
                       {isUserDeveloper && (
                           <>
+                            <DropdownMenuSeparator />
                             <DropdownMenuItem asChild>
                               <Link href="/developer" className="flex items-center gap-2 cursor-pointer">
                                 <Terminal className="h-4 w-4" />
                                 <span>Developer Dashboard</span>
                               </Link>
                             </DropdownMenuItem>
-                            <DropdownMenuSeparator />
                           </>
                       )}
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem
                           onClick={logout}
                           className="flex items-center gap-2 cursor-pointer text-destructive focus:text-destructive"
@@ -101,4 +114,3 @@ export default function Navbar() {
       </header>
   )
 }
-

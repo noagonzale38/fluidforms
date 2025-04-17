@@ -24,6 +24,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 type FormsListProps = {
   forms: Array<{
@@ -46,8 +47,6 @@ export function FormsList({ forms, isLoading }: FormsListProps) {
   console.log("Forms list received:", forms)
 
   const deleteForm = async (formId: string) => {
-    // In a real implementation, this would delete from Supabase
-    // We would use the admin API route to bypass RLS
     try {
       const response = await fetch("/api/supabase/rls-bypass", {
         method: "POST",
@@ -104,14 +103,6 @@ export function FormsList({ forms, isLoading }: FormsListProps) {
     })
   }
 
-  const duplicateForm = (formId: string) => {
-    // In a real implementation, this would duplicate the form in the database
-    toast({
-      title: "Duplicating form",
-      description: "This feature is not yet implemented.",
-    })
-  }
-
   if (isLoading) {
     return (
         <div className="flex justify-center py-12">
@@ -140,96 +131,150 @@ export function FormsList({ forms, isLoading }: FormsListProps) {
   }
 
   return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {forms.map((form) => (
-            <Card key={form.id} className="overflow-hidden">
-              <CardHeader className="pb-3">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-xl">{form.title}</CardTitle>
-                    <CardDescription className="mt-1 line-clamp-2 text-base">{form.description}</CardDescription>
+    <Tabs defaultValue="grid">
+      <div className="flex justify-end mb-4">
+        <TabsList>
+          <TabsTrigger value="grid">Grid</TabsTrigger>
+          <TabsTrigger value="list">List</TabsTrigger>
+        </TabsList>
+      </div>
+
+      <TabsContent value="grid">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {forms.map((form) => (
+              <Card key={form.id} className="overflow-hidden">
+                <CardHeader className="pb-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="text-xl">{form.title}</CardTitle>
+                      <CardDescription className="mt-1 line-clamp-2 text-base">{form.description}</CardDescription>
+                    </div>
+                    <Badge
+                        variant={form.status === "active" ? "default" : "secondary"}
+                        className="capitalize text-sm px-3 py-1"
+                    >
+                      {form.status}
+                    </Badge>
                   </div>
-                  <Badge
-                      variant={form.status === "active" ? "default" : "secondary"}
-                      className="capitalize text-sm px-3 py-1"
-                  >
+                </CardHeader>
+                <CardContent className="pb-3">
+                  <div className="flex items-center justify-between text-base">
+                    <div className="text-muted-foreground">Updated {formatDate(form.updatedAt)}</div>
+                    <div className="flex items-center">
+                      <BarChart3 className="h-5 w-5 mr-1 text-muted-foreground" />
+                      <span>{form.responseCount} responses</span>
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter className="flex justify-between pt-3 border-t">
+                  <Link href={`/forms/${form.id}`}>
+                    <Button variant="outline" className="rounded-full text-base px-4 py-2 h-auto">
+                      <ExternalLink className="h-5 w-5 mr-2" /> View
+                    </Button>
+                  </Link>
+                  <div className="flex gap-2">
+                    <Link href={`/forms/${form.id}/edit`}>
+                      <Button variant="outline" className="rounded-full h-10 w-10 p-0">
+                        <Edit className="h-5 w-5" />
+                      </Button>
+                    </Link>
+                    <Link href={`/forms/${form.id}/results`}>
+                      <Button variant="outline" className="rounded-full h-10 w-10 p-0">
+                        <BarChart3 className="h-5 w-5" />
+                      </Button>
+                    </Link>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="rounded-full h-10 w-10 p-0">
+                          <MoreHorizontal className="h-5 w-5" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel className="text-base">Actions</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-base" onClick={() => copyShareLink(form.shareId)}>
+                          <Share2 className="h-5 w-5 mr-2" /> Copy Share Link
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <DropdownMenuItem
+                                onSelect={(e) => e.preventDefault()}
+                                className="text-destructive focus:text-destructive text-base"
+                            >
+                              <Trash2 className="h-5 w-5 mr-2" /> Delete
+                            </DropdownMenuItem>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle className="text-xl">Are you sure?</AlertDialogTitle>
+                              <AlertDialogDescription className="text-base">
+                                This will permanently delete the form and all its responses. This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel className="rounded-full text-base">Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                  className="rounded-full bg-destructive hover:bg-destructive/90 text-base"
+                                  onClick={() => deleteForm(form.id)}
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </CardFooter>
+              </Card>
+          ))}
+        </div>
+      </TabsContent>
+
+      <TabsContent value="list">
+        <div className="space-y-4">
+          {forms.map((form) => (
+            <Card key={form.id}>
+              <CardHeader className="p-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <CardTitle>{form.title}</CardTitle>
+                    {form.description && (
+                      <CardDescription className="mt-1">{form.description}</CardDescription>
+                    )}
+                  </div>
+                  <Badge variant={form.status === "active" ? "default" : "secondary"}>
                     {form.status}
                   </Badge>
                 </div>
               </CardHeader>
-              <CardContent className="pb-3">
-                <div className="flex items-center justify-between text-base">
-                  <div className="text-muted-foreground">Updated {formatDate(form.updatedAt)}</div>
-                  <div className="flex items-center">
-                    <BarChart3 className="h-5 w-5 mr-1 text-muted-foreground" />
-                    <span>{form.responseCount} responses</span>
+              <CardContent className="p-4 pt-0">
+                <div className="flex justify-between items-center">
+                  <div className="text-sm text-muted-foreground">
+                    Updated {formatDate(form.updatedAt)}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Link href={`/forms/${form.id}`}>
+                      <Button variant="outline" size="sm">View</Button>
+                    </Link>
+                    <Link href={`/forms/${form.id}/edit`}>
+                      <Button variant="outline" size="sm">Edit</Button>
+                    </Link>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => copyShareLink(form.shareId)}
+                    >
+                      Share
+                    </Button>
                   </div>
                 </div>
               </CardContent>
-              <CardFooter className="flex justify-between pt-3 border-t">
-                <Link href={`/forms/${form.id}`}>
-                  <Button variant="outline" className="rounded-full text-base px-4 py-2 h-auto">
-                    <ExternalLink className="h-5 w-5 mr-2" /> View
-                  </Button>
-                </Link>
-                <div className="flex gap-2">
-                  <Link href={`/forms/${form.id}/edit`}>
-                    <Button variant="outline" className="rounded-full h-10 w-10 p-0">
-                      <Edit className="h-5 w-5" />
-                    </Button>
-                  </Link>
-                  <Link href={`/forms/${form.id}/results`}>
-                    <Button variant="outline" className="rounded-full h-10 w-10 p-0">
-                      <BarChart3 className="h-5 w-5" />
-                    </Button>
-                  </Link>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="rounded-full h-10 w-10 p-0">
-                        <MoreHorizontal className="h-5 w-5" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel className="text-base">Actions</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem className="text-base" onClick={() => copyShareLink(form.shareId)}>
-                        <Share2 className="h-5 w-5 mr-2" /> Copy Share Link
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <DropdownMenuItem
-                              onSelect={(e) => e.preventDefault()}
-                              className="text-destructive focus:text-destructive text-base"
-                          >
-                            <Trash2 className="h-5 w-5 mr-2" /> Delete
-                          </DropdownMenuItem>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle className="text-xl">Are you sure?</AlertDialogTitle>
-                            <AlertDialogDescription className="text-base">
-                              This will permanently delete the form and all its responses. This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel className="rounded-full text-base">Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                                className="rounded-full bg-destructive hover:bg-destructive/90 text-base"
-                                onClick={() => deleteForm(form.id)}
-                            >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </CardFooter>
             </Card>
-        ))}
-      </div>
+          ))}
+        </div>
+      </TabsContent>
+    </Tabs>
   )
 }
-

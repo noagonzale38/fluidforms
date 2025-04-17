@@ -12,17 +12,30 @@ import { Calendar } from "@/components/ui/calendar"
 import { Slider } from "@/components/ui/slider"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
-import { CalendarIcon } from "lucide-react"
+import { CalendarIcon, Copy, Settings, Trash2 } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
+import { ImageUpload } from "@/components/ui/image-upload"
 
 type FormElementPreviewProps = {
   element: FormElement
   value?: any
   onChange?: (value: any) => void
+  onDuplicate?: () => void
+  onDelete?: () => void
+  onEdit?: () => void
+  showActions?: boolean
 }
 
-export function FormElementPreview({ element, value, onChange }: FormElementPreviewProps) {
+export function FormElementPreview({ 
+  element, 
+  value, 
+  onChange,
+  onDuplicate,
+  onDelete,
+  onEdit,
+  showActions = false
+}: FormElementPreviewProps) {
   const { type, label, required, properties } = element
   const [date, setDate] = useState<Date | undefined>()
 
@@ -34,7 +47,7 @@ export function FormElementPreview({ element, value, onChange }: FormElementPrev
 
   const renderDescription = () => {
     if (!properties?.description) return null
-    return <p className="text-sm text-muted-foreground mb-2">{properties.description}</p>
+    return <p className="text-sm text-muted-foreground mb-3">{properties.description}</p>
   }
 
   const renderRequiredIndicator = () => {
@@ -42,10 +55,69 @@ export function FormElementPreview({ element, value, onChange }: FormElementPrev
     return <span className="text-destructive ml-1">*</span>
   }
 
+  const renderActions = () => {
+    if (!showActions) return null
+    return (
+      <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-hover/menu-item:opacity-100">
+        {onEdit && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 rounded-full"
+            onClick={(e) => {
+              e.stopPropagation()
+              onEdit()
+            }}
+          >
+            <Settings className="h-4 w-4" />
+          </Button>
+        )}
+        {onDuplicate && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 rounded-full"
+            onClick={(e) => {
+              e.stopPropagation()
+              onDuplicate()
+            }}
+          >
+            <Copy className="h-4 w-4" />
+          </Button>
+        )}
+        {onDelete && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 rounded-full text-destructive hover:text-destructive"
+            onClick={(e) => {
+              e.stopPropagation()
+              onDelete()
+            }}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
+    )
+  }
+
   switch (type) {
+    case "text-display":
+      return (
+        <div className="space-y-2 relative">
+          {renderActions()}
+          <h3 className="text-lg font-semibold">{label}</h3>
+          {properties?.description && (
+            <p className="text-muted-foreground">{properties.description}</p>
+          )}
+        </div>
+      )
+
     case "short-answer":
       return (
-        <div className="space-y-2">
+        <div className="space-y-3 relative">
+          {renderActions()}
           <Label>
             {label}
             {renderRequiredIndicator()}
@@ -62,7 +134,8 @@ export function FormElementPreview({ element, value, onChange }: FormElementPrev
 
     case "paragraph":
       return (
-        <div className="space-y-2">
+        <div className="space-y-3 relative">
+          {renderActions()}
           <Label>
             {label}
             {renderRequiredIndicator()}
@@ -79,7 +152,8 @@ export function FormElementPreview({ element, value, onChange }: FormElementPrev
 
     case "number":
       return (
-        <div className="space-y-2">
+        <div className="space-y-3 relative">
+          {renderActions()}
           <Label>
             {label}
             {renderRequiredIndicator()}
@@ -97,7 +171,8 @@ export function FormElementPreview({ element, value, onChange }: FormElementPrev
 
     case "multiple-choice":
       return (
-        <div className="space-y-2">
+        <div className="space-y-3 relative">
+          {renderActions()}
           <Label>
             {label}
             {renderRequiredIndicator()}
@@ -118,7 +193,8 @@ export function FormElementPreview({ element, value, onChange }: FormElementPrev
 
     case "checkboxes":
       return (
-        <div className="space-y-2">
+        <div className="space-y-3 relative">
+          {renderActions()}
           <Label>
             {label}
             {renderRequiredIndicator()}
@@ -157,7 +233,8 @@ export function FormElementPreview({ element, value, onChange }: FormElementPrev
 
     case "dropdown":
       return (
-        <div className="space-y-2">
+        <div className="space-y-3 relative">
+          {renderActions()}
           <Label>
             {label}
             {renderRequiredIndicator()}
@@ -178,9 +255,28 @@ export function FormElementPreview({ element, value, onChange }: FormElementPrev
         </div>
       )
 
+    case "image-selection":
+      return (
+        <div className="space-y-3 relative">
+          {renderActions()}
+          <Label>
+            {label}
+            {renderRequiredIndicator()}
+          </Label>
+          {renderDescription()}
+          <ImageUpload
+            onUpload={handleChange}
+            defaultImage={value}
+            maxSize={5}
+            className="aspect-video w-full"
+          />
+        </div>
+      )
+
     case "date":
       return (
-        <div className="space-y-2">
+        <div className="space-y-3 relative">
+          {renderActions()}
           <Label>
             {label}
             {renderRequiredIndicator()}
@@ -213,7 +309,8 @@ export function FormElementPreview({ element, value, onChange }: FormElementPrev
 
     case "email":
       return (
-        <div className="space-y-2">
+        <div className="space-y-3 relative">
+          {renderActions()}
           <Label>
             {label}
             {renderRequiredIndicator()}
@@ -231,7 +328,8 @@ export function FormElementPreview({ element, value, onChange }: FormElementPrev
 
     case "phone-number":
       return (
-        <div className="space-y-2">
+        <div className="space-y-3 relative">
+          {renderActions()}
           <Label>
             {label}
             {renderRequiredIndicator()}
@@ -249,7 +347,8 @@ export function FormElementPreview({ element, value, onChange }: FormElementPrev
 
     case "website-url":
       return (
-        <div className="space-y-2">
+        <div className="space-y-3 relative">
+          {renderActions()}
           <Label>
             {label}
             {renderRequiredIndicator()}
@@ -267,7 +366,8 @@ export function FormElementPreview({ element, value, onChange }: FormElementPrev
 
     case "rating-scale":
       return (
-        <div className="space-y-2">
+        <div className="space-y-3 relative">
+          {renderActions()}
           <Label>
             {label}
             {renderRequiredIndicator()}
@@ -291,7 +391,8 @@ export function FormElementPreview({ element, value, onChange }: FormElementPrev
 
     case "time":
       return (
-        <div className="space-y-2">
+        <div className="space-y-3 relative">
+          {renderActions()}
           <Label>
             {label}
             {renderRequiredIndicator()}
@@ -303,7 +404,8 @@ export function FormElementPreview({ element, value, onChange }: FormElementPrev
 
     case "range-slider":
       return (
-        <div className="space-y-2">
+        <div className="space-y-3 relative">
+          {renderActions()}
           <Label>
             {label}
             {renderRequiredIndicator()}
@@ -327,7 +429,8 @@ export function FormElementPreview({ element, value, onChange }: FormElementPrev
 
     case "section":
       return (
-        <div className="space-y-2 py-2">
+        <div className="space-y-3 py-2 relative">
+          {renderActions()}
           <h3 className="text-xl font-medium">{label}</h3>
           {renderDescription()}
           <div className="border-t border-border/50 pt-2"></div>
@@ -342,4 +445,3 @@ export function FormElementPreview({ element, value, onChange }: FormElementPrev
       )
   }
 }
-

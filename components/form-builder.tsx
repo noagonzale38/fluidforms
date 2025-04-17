@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { FormElementEditor } from "@/components/form-element-editor"
 import { FormElementPreview } from "@/components/form-element-preview"
-import { Plus, GripVertical, Trash2, Copy, Settings } from "lucide-react"
+import { Plus, GripVertical } from "lucide-react"
 import type { FormElementType, FormElement } from "@/types/form"
 import { formElementTypes } from "@/lib/form-element-types"
 
@@ -27,6 +27,7 @@ export function FormBuilder({ elements, setElements }: FormBuilderProps) {
       required: false,
       properties: {},
       conditions: [],
+      section: type === "section" ? `section-${Date.now()}` : undefined
     }
 
     setElements([...elements, newElement])
@@ -82,7 +83,7 @@ export function FormBuilder({ elements, setElements }: FormBuilderProps) {
             <h2 className="text-2xl font-bold">Form Builder</h2>
             <Button
               variant="outline"
-              className="rounded-full text-base px-4 py-2 h-auto"
+              className="rounded-full text-base px-6 py-3 h-12"
               onClick={() => setSelectedElementId(null)}
             >
               <Plus className="h-5 w-5 mr-2" /> Add Element
@@ -93,103 +94,42 @@ export function FormBuilder({ elements, setElements }: FormBuilderProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <Tabs defaultValue="text" className="w-full">
                 <TabsList className="grid w-full grid-cols-4">
-                  <TabsTrigger value="text" className="text-base py-2">
+                  <TabsTrigger value="text" className="text-base py-3">
                     Text
                   </TabsTrigger>
-                  <TabsTrigger value="choice" className="text-base py-2">
+                  <TabsTrigger value="choice" className="text-base py-3">
                     Choice
                   </TabsTrigger>
-                  <TabsTrigger value="special" className="text-base py-2">
+                  <TabsTrigger value="special" className="text-base py-3">
                     Special
                   </TabsTrigger>
-                  <TabsTrigger value="scale" className="text-base py-2">
+                  <TabsTrigger value="scale" className="text-base py-3">
                     Scale
                   </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="text" className="mt-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {formElementTypes
-                      .filter((type) => type.category === "text")
-                      .map((type) => (
-                        <Button
-                          key={type.value}
-                          variant="outline"
-                          className="h-auto flex items-center justify-start p-4 rounded-xl text-base w-full"
-                          onClick={() => addElement(type.value as FormElementType)}
-                        >
-                          <div className="mr-3 flex-shrink-0">{type.icon}</div>
-                          <div className="text-left min-w-0 flex-1">
-                            <div className="font-medium truncate">{type.label}</div>
-                            <div className="text-sm text-muted-foreground truncate">{type.description}</div>
-                          </div>
-                        </Button>
-                      ))}
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="choice" className="mt-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {formElementTypes
-                      .filter((type) => type.category === "choice")
-                      .map((type) => (
-                        <Button
-                          key={type.value}
-                          variant="outline"
-                          className="h-auto flex items-center justify-start p-4 rounded-xl text-base w-full"
-                          onClick={() => addElement(type.value as FormElementType)}
-                        >
-                          <div className="mr-3 flex-shrink-0">{type.icon}</div>
-                          <div className="text-left min-w-0 flex-1">
-                            <div className="font-medium truncate">{type.label}</div>
-                            <div className="text-sm text-muted-foreground truncate">{type.description}</div>
-                          </div>
-                        </Button>
-                      ))}
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="special" className="mt-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {formElementTypes
-                      .filter((type) => type.category === "special")
-                      .map((type) => (
-                        <Button
-                          key={type.value}
-                          variant="outline"
-                          className="h-auto flex items-center justify-start p-4 rounded-xl text-base w-full"
-                          onClick={() => addElement(type.value as FormElementType)}
-                        >
-                          <div className="mr-3 flex-shrink-0">{type.icon}</div>
-                          <div className="text-left min-w-0 flex-1">
-                            <div className="font-medium truncate">{type.label}</div>
-                            <div className="text-sm text-muted-foreground truncate">{type.description}</div>
-                          </div>
-                        </Button>
-                      ))}
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="scale" className="mt-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {formElementTypes
-                      .filter((type) => type.category === "scale")
-                      .map((type) => (
-                        <Button
-                          key={type.value}
-                          variant="outline"
-                          className="h-auto flex items-center justify-start p-4 rounded-xl text-base w-full"
-                          onClick={() => addElement(type.value as FormElementType)}
-                        >
-                          <div className="mr-3 flex-shrink-0">{type.icon}</div>
-                          <div className="text-left min-w-0 flex-1">
-                            <div className="font-medium truncate">{type.label}</div>
-                            <div className="text-sm text-muted-foreground truncate">{type.description}</div>
-                          </div>
-                        </Button>
-                      ))}
-                  </div>
-                </TabsContent>
+                {["text", "choice", "special", "scale"].map((category) => (
+                  <TabsContent key={category} value={category} className="mt-4">
+                    <div className="grid grid-cols-1 gap-4">
+                      {formElementTypes
+                        .filter((type) => type.category === category)
+                        .map((type) => (
+                          <Button
+                            key={type.value}
+                            variant="outline"
+                            className="h-auto flex items-center justify-start p-6 rounded-xl text-base w-full"
+                            onClick={() => addElement(type.value as FormElementType)}
+                          >
+                            <div className="mr-3 flex-shrink-0">{type.icon}</div>
+                            <div className="text-left min-w-0 flex-1">
+                              <div className="font-medium truncate">{type.label}</div>
+                              <div className="text-sm text-muted-foreground truncate">{type.description}</div>
+                            </div>
+                          </Button>
+                        ))}
+                    </div>
+                  </TabsContent>
+                ))}
               </Tabs>
             </div>
           )}
@@ -223,7 +163,7 @@ export function FormBuilder({ elements, setElements }: FormBuilderProps) {
                           <div
                             ref={provided.innerRef}
                             {...provided.draggableProps}
-                            className={`form-element group ${
+                            className={`form-element group/menu-item relative ${
                               selectedElementId === element.id ? "form-element-selected" : ""
                             }`}
                           >
@@ -236,34 +176,13 @@ export function FormBuilder({ elements, setElements }: FormBuilderProps) {
                               </div>
 
                               <div className="flex-1">
-                                <FormElementPreview element={element} />
-                              </div>
-
-                              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-10 w-10 rounded-full"
-                                  onClick={() => setSelectedElementId(element.id)}
-                                >
-                                  <Settings className="h-5 w-5" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-10 w-10 rounded-full"
-                                  onClick={() => duplicateElement(element.id)}
-                                >
-                                  <Copy className="h-5 w-5" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-10 w-10 rounded-full text-destructive hover:text-destructive"
-                                  onClick={() => deleteElement(element.id)}
-                                >
-                                  <Trash2 className="h-5 w-5" />
-                                </Button>
+                                <FormElementPreview 
+                                  element={element} 
+                                  showActions={true}
+                                  onEdit={() => setSelectedElementId(element.id)}
+                                  onDuplicate={() => duplicateElement(element.id)}
+                                  onDelete={() => deleteElement(element.id)}
+                                />
                               </div>
                             </div>
                           </div>
@@ -281,4 +200,3 @@ export function FormBuilder({ elements, setElements }: FormBuilderProps) {
     </div>
   )
 }
-
